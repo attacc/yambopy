@@ -42,21 +42,18 @@ def Coefficents_Inversion(NW,NX,P,W,T_period,T_range,T_step,efield,INV_MODE):
 
 
 # Calculation of  T_i and P_i
-    for i_t in range(M_size):
-        T_i[i_t] = (i_t_start + i_deltaT * i_t)*T_step - efield["initial_time"]
-        P_i[i_t] = P[i_t_start + i_deltaT * i_t]
+    T_i = (i_t_start + i_deltaT * np.arange(M_size)) * T_step - efield["initial_time"]
+    P_i = P[i_t_start + i_deltaT * np.arange(M_size)]
 
     Sampling[:,0]=T_i/fs2aut
     Sampling[:,1]=P_i
 
 # Build the M matrix
-    for i_t in range(M_size):
-        M[i_t, 0] = 1.0
+    M[:, 0] = 1.0
 
-    for i_t in range(M_size):
-        for i_n in range(1, nP_components):
-            M[i_t, i_n]          = np.exp(-1j * W[i_n] * T_i[i_t],dtype=np.cdouble)
-            M[i_t, i_n - 1 + NX] = np.exp( 1j * W[i_n] * T_i[i_t],dtype=np.cdouble)
+    for i_n in range(1, nP_components):
+        M[:, i_n]          = np.exp(-1j * W[i_n] * T_i[:],dtype=np.cdouble)
+        M[:, i_n - 1 + NX] = np.exp( 1j * W[i_n] * T_i[:],dtype=np.cdouble)
 
 # Invert M matrix
     INV_MODES = ['full', 'lstsq', 'svd']
@@ -84,8 +81,7 @@ def Coefficents_Inversion(NW,NX,P,W,T_period,T_range,T_step,efield,INV_MODE):
 # Calculate X_here
     X_here=np.zeros(nP_components,dtype=np.cdouble)
     for i_n in range(nP_components):
-        for i_t in range(M_size):
-           X_here[i_n]=X_here[i_n]+INV[i_n,i_t]*P_i[i_t] 
+        X_here[i_n]=np.dot(INV[i_n,:],P_i[:]) 
 
     return X_here,Sampling
 
