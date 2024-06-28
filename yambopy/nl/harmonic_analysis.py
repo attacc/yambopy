@@ -98,6 +98,7 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
     n_runs=len(nldb.Polarization)
     # Array of polarizations for each laser frequency
     polarization=nldb.Polarization
+    current     =nldb.Polarization
     freqs=np.zeros(n_runs,dtype=np.double)
 
     print("\n* * * Harmonic analysis * * *\n")
@@ -143,6 +144,9 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
     Susceptibility    =np.zeros((X_order+1,n_runs,3),dtype=np.cdouble)
     Sampling          =np.zeros((M_size, 2,n_runs,3),dtype=np.double)    
     Harmonic_Frequency=np.zeros((X_order+1,n_runs),dtype=np.double)
+    # Calculate also the current response
+    Sigma_effective       =np.zeros((X_order+1,n_runs,3),dtype=np.cdouble)
+    Conducibility         =np.zeros((X_order+1,n_runs,3),dtype=np.cdouble)
 
     # Generate multiples of each frequency
     for i_order in range(X_order+1):
@@ -175,6 +179,8 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
         #
         for i_d in range(3):
             X_effective[:,i_f,i_d],Sampling[:,:,i_f,i_d]=Coefficents_Inversion(X_order+1, X_order+1, polarization[i_f][i_d,:],Harmonic_Frequency[:,i_f],T_period,T_range,T_step,efield,INV_MODE)
+        for i_d in range(3):
+            Sigma_effective[:,i_f,i_d],Sampling[:,:,i_f,i_d]=Coefficents_Inversion(X_order+1, X_order+1, current[i_f][i_d,:],Harmonic_Frequency[:,i_f],T_period,T_range,T_step,efield,INV_MODE)
 
     # Calculate Susceptibilities from X_effective
     for i_order in range(X_order+1):
@@ -182,10 +188,14 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
             if i_order==1:
                 Susceptibility[i_order,i_f,0]   =4.0*np.pi*np.dot(efield['versor'][:],X_effective[i_order,i_f,:])
                 Susceptibility[i_order,i_f,1:2] =0.0
+                Conducibility[i_order,i_f,0]    =4.0*np.pi*np.dot(efield['versor'][:],Sigma_effective[i_order,i_f,:])
+                Conducibility[i_order,i_f,1:2]  =0.0
             else:
                 Susceptibility[i_order,i_f,:]=X_effective[i_order,i_f,:]
+                Conducibility[i_order,i_f,:] =Sigma_effective[i_order,i_f,:]
             
             Susceptibility[i_order,i_f,:]*=Divide_by_the_Field(nldb.Efield[i_f],i_order)
+            Conducibility[i_order,i_f,:] *=Divide_by_the_Field(nldb.Efield[i_f],i_order)
 
 
 
@@ -193,17 +203,24 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
     if(prn_Peff):
         print("Reconstruct effective polarizations ...")
         Peff=np.zeros((n_runs,3,len(time)),dtype=np.cdouble)
+        Jeff=np.zeros((n_runs,3,len(time)),dtype=np.cdouble)
         for i_f in tqdm(range(n_runs)):
             for i_d in range(3):
                 for i_order in range(X_order+1):
                     Peff[i_f,i_d,:]+=X_effective[i_order,i_f,i_d]*np.exp(-1j*i_order*freqs[i_f]*time[:])
                     Peff[i_f,i_d,:]+=np.conj(X_effective[i_order,i_f,i_d])*np.exp(+1j*i_order*freqs[i_f]*time[:])
-        # Print reconstructed polarization
-        header2="[fs]            "
-        header2+="Px     "
-        header2+="Py     "
-        header2+="Pz     "
-        footer2='Time dependent polarization reconstructed from Fourier coefficients'
+                    Jeff[i_f,i_d,:]+=Sigma_effective[i_order,i_f,i_d]*np.exp(-1j*i_order*freqs[i_f]*time[:])
+                    Jeff[i_f,i_d,:]+=np.conj(Sigma_effective[i_order,i_f,i_d])*np.exp(+1j*i_order*freqs[i_f]*time[:])
+        # Print reconstructed polarization/current
+
+        headerP="[fs]            "
+        headerP+="Px     "
+        headerP+="Py     "
+        headerP+="Pz     "
+        footerP='Time dependent polarization reconstructed from Fourier coefficients'
+
+
+
         print("Print effective polarizations ...")
         for i_f in tqdm(range(n_runs)):
             values2=np.c_[time.real/fs2aut]
@@ -211,7 +228,7 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
             values2=np.append(values2,np.c_[Peff[i_f,1,:].real],axis=1)
             values2=np.append(values2,np.c_[Peff[i_f,2,:].real],axis=1)
             output_file2='o.YamboPy-pol_reconstructed_F'+str(i_f+1)
-            np.savetxt(output_file2,values2,header=header2,delimiter=' ',footer=footer2)
+            np.savetxt(output_file2,values2,header=headerP,delimiter=' ',footer=footer2)
 
         # Print Sampling point
         footer2='Sampled polarization'
