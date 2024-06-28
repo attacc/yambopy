@@ -98,7 +98,11 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
     n_runs=len(nldb.Polarization)
     # Array of polarizations for each laser frequency
     polarization=nldb.Polarization
+    # Current
     current     =nldb.Current
+    # check if current has been calculated
+    l_eval_current=nldb.l_eval_CURRENT
+    # Harmonic frequencies
     freqs=np.zeros(n_runs,dtype=np.double)
 
     print("\n* * * Harmonic analysis * * *\n")
@@ -110,6 +114,12 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
     if nldb.Efield_general[1]["name"] != "none" or nldb.Efield_general[2]["name"] != "none":
         print("Harmonic analysis works only with a single field, please use sum_frequency.py functions")
         sys.exit(0)
+
+    if l_eval_current:
+        print("Current is present: conducibilities will not be calculated ")
+    else:
+        print("Current is not present: conducibilities will not be calculated ")
+
 
     print("Number of runs : %d " % n_runs)
     # Smaller frequency
@@ -241,7 +251,8 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
             output_fileJ='o.YamboPy-curr_reconstructed_F'+str(i_f+1)
 
             np.savetxt(output_fileP,valuesP,header=headerP,delimiter=' ',footer=footerP)
-            np.savetxt(output_fileJ,valuesJ,header=headerJ,delimiter=' ',footer=footerJ)
+            if l_eval_current:
+                np.savetxt(output_fileJ,valuesJ,header=headerJ,delimiter=' ',footer=footerJ)
 
         # Print Sampling point
         footerP='Sampled polarization'
@@ -260,11 +271,17 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
             valuesJ=np.append(valuesJ,np.c_[SamplingJ[:,1,i_f,1]],axis=1)
             valuesJ=np.append(valuesJ,np.c_[SamplingJ[:,1,i_f,2]],axis=1)
             output_fileJ='o.YamboPy-sampling_curr_F'+str(i_f+1)
-            np.savetxt(output_fileJ,valuesJ,header=headerJ,delimiter=' ',footer=footerJ)
+            if l_eval_current:
+                np.savetxt(output_fileJ,valuesJ,header=headerJ,delimiter=' ',footer=footerJ)
 
 
     # Print the result
-    print("Write final results: xhi^1,xhi^2,xhi^3,... and sigma^1,sigma^2,sigma^3,....")
+    print("Write final results: xhi^1,xhi^2,xhi^3...",end='')
+    if l_eval_current:
+        print(" and sigma^1,sigma^2,sigma^3,....")
+    else:
+        print("")
+
     for i_order in range(X_order+1):
 
         if i_order==0: 
@@ -327,7 +344,8 @@ def Harmonic_Analysis(nldb, X_order=4, T_range=[-1, -1],prn_Peff=False,INV_MODE=
         footerP+='Non-linear response analysis performed using YamboPy\n '
         footerJ+='Non-linear response analysis performed using YamboPy\n '
         np.savetxt(output_fileP,valuesP,header=headerP,delimiter=' ',footer=footerP)
-        np.savetxt(output_fileJ,valuesJ,header=headerJ,delimiter=' ',footer=footerJ)
+        if l_eval_current:
+            np.savetxt(output_fileJ,valuesJ,header=headerJ,delimiter=' ',footer=footerJ)
 
 def update_T_range(T_period,T_range_initial,time):
         #
